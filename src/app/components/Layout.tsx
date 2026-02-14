@@ -1,5 +1,6 @@
 import { Outlet, Link, useLocation } from 'react-router';
 import { AIAssistant } from './AIAssistant';
+import { useAuth } from '../../context/AuthContext';
 import { 
   Home, 
   Camera, 
@@ -16,11 +17,16 @@ import {
   Menu,
   X,
   Search,
-  Bell
+  Bell,
+  LogOut,
+  Info
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
+import { FIREBASE_ENABLED } from '../../firebase';
+import { HF_ENABLED } from '../../services/chatService';
+import { WEATHER_API_ENABLED } from '../../services/weatherService';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: Home },
@@ -40,6 +46,29 @@ const navigation = [
 export function Layout() {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { user, logout, demoMode } = useAuth();
+  const [showDemoInfo, setShowDemoInfo] = useState(false);
+  const demoInfoRef = useRef<HTMLDivElement>(null);
+
+  const handleLogout = async () => {
+    await logout();
+  };
+
+  const isAnyDemoMode = demoMode || !FIREBASE_ENABLED || !HF_ENABLED || !WEATHER_API_ENABLED;
+
+  // Close demo info when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (demoInfoRef.current && !demoInfoRef.current.contains(event.target as Node)) {
+        setShowDemoInfo(false);
+      }
+    }
+
+    if (showDemoInfo) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showDemoInfo]);
 
   return (
     <div className="min-h-screen bg-[#F8FAF9] selection:bg-emerald-200">
@@ -110,16 +139,24 @@ export function Layout() {
 
           {/* User Profile Card at bottom */}
           <div className="mt-auto p-6 border-t border-emerald-50 bg-emerald-50/30">
-             <div className="flex items-center gap-3">
+             <div className="flex items-center gap-3 mb-3">
                 <div className="h-10 w-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold border border-emerald-200">
-                   JS
+                   {user?.email?.[0].toUpperCase() || 'U'}
                 </div>
-                <div className="flex-1">
-                   <p className="text-xs font-black text-gray-900">Jai Singh</p>
-                   <p className="text-[10px] text-gray-500 font-bold">PREMIUM FARMER</p>
+                <div className="flex-1 min-w-0">
+                   <p className="text-xs font-black text-gray-900 truncate">{user?.email}</p>
+                   <p className="text-[10px] text-gray-500 font-bold">VERIFIED FARMER</p>
                 </div>
-                <Bell className="h-4 w-4 text-gray-400 hover:text-emerald-600 cursor-pointer" />
+                <Bell className="h-4 w-4 text-gray-400 hover:text-emerald-600 cursor-pointer shrink-0" />
              </div>
+             <Button
+               variant="outline"
+               className="w-full h-9 rounded-xl border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700 text-sm font-bold"
+               onClick={handleLogout}
+             >
+                <LogOut className="h-4 w-4 mr-2" />
+                Logout
+             </Button>
           </div>
         </div>
       </aside>

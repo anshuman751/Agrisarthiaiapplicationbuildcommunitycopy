@@ -2,6 +2,30 @@
 
 A comprehensive agricultural AI web application built with React, TypeScript, and Tailwind CSS. AgriSarthi AI helps farmers make data-driven decisions using artificial intelligence and machine learning algorithms.
 
+## ⚡ Quick Start
+
+### Demo Mode (No Setup Required)
+The application works immediately without any configuration! Just run:
+
+```bash
+npm install
+npm run dev
+```
+
+All features are available with simulated data perfect for testing and development.
+
+### Production Mode (With Real APIs)
+For production use with real authentication, weather data, and AI chat:
+
+1. **Configure API services** - See **[API_SETUP.md](./API_SETUP.md)** for detailed instructions
+2. **Copy `.env.example` to `.env`**
+3. **Add your API keys** (Firebase, OpenWeather, HuggingFace)
+4. **Restart the server**
+
+**Check the app header for a "Demo Mode" badge** - it shows which APIs need configuration.
+
+---
+
 ## 🚀 Features
 
 ### 1. **AI Crop Disease Detection**

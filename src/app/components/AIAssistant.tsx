@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { MessageCircle, Mic, MicOff, Send, X, Globe, User, Volume2, VolumeX, Minimize2, Maximize2, Sparkles, Cat } from 'lucide-react';
+import { MessageCircle, Mic, MicOff, Send, X, Globe, User, Volume2, VolumeX, Minimize2, Maximize2, Sparkles, Cat, Loader2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
@@ -8,6 +8,8 @@ import { speak, stopSpeaking, startListening, stopListening } from '../utils/voi
 import { Badge } from './ui/badge';
 import { motion, AnimatePresence } from 'motion/react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
+import { generateAIResponse } from '../../services/chatService';
+import { toast } from 'sonner';
 
 interface Message {
   id: string;
@@ -29,6 +31,7 @@ export function AIAssistant() {
   const [inputText, setInputText] = useState('');
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [language, setLanguage] = useState<'en' | 'hi'>('en');
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -106,55 +109,42 @@ export function AIAssistant() {
     }]);
   };
 
-  const processAIResponse = (query: string) => {
-    let responseText = "";
-    const lowerQuery = query.toLowerCase();
-
-    if (language === 'en') {
-      if (lowerQuery.includes('weather') || lowerQuery.includes('rain')) {
-        responseText = "The skies are looking good for farming! Expect light showers tomorrow morning which is great for your wheat. Purr-fect timing!";
-      } else if (lowerQuery.includes('disease') || lowerQuery.includes('pest') || lowerQuery.includes('yellow')) {
-        responseText = "If you see yellow spots on leaves, it could be Rust disease. I recommend checking the 'Crop Disease' section and spraying appropriate fungicide. Don't let those pests scratch your hard work!";
-      } else if (lowerQuery.includes('market') || lowerQuery.includes('price')) {
-        responseText = "Market prices are climbing! Wheat is at ₹2,150 per quintal. It's a good time to sell part of your harvest. More milk for the kitty!";
-      } else if (lowerQuery.includes('irrigation') || lowerQuery.includes('water')) {
-        responseText = "Your soil moisture sensor says it's getting dry. Turn on the drip irrigation for 2 hours today. Water is precious, like a clean bowl of milk!";
-      } else if (lowerQuery.includes('hello') || lowerQuery.includes('hi')) {
-        responseText = "Hello there! I'm your agricultural cat expert. What's on your mind? Crops, weather, or maybe some government schemes?";
-      } else if (lowerQuery.includes('scheme') || lowerQuery.includes('government')) {
-        responseText = "There are many schemes like PM-KISAN. Check the 'Government Schemes' page for eligibility. It's like finding a hidden treat!";
-      } else {
-        responseText = "That's an interesting question! While I'm just a cat, I suggest checking our specialized tools for soil analysis or yield estimation for exact data.";
-      }
-    } else {
-      if (lowerQuery.includes('weather') || lowerQuery.includes('mausam') || lowerQuery.includes('barish')) {
-        responseText = "मौसम खेती के लिए अच्छा लग रहा है! कल सुबह हल्की बारिश की संभावना है जो आपकी गेहूं की फसल के लिए बहुत अच्छी है। म्याऊँ!";
-      } else if (lowerQuery.includes('disease') || lowerQuery.includes('bimari') || lowerQuery.includes('peela')) {
-        responseText = "यदि आप पत्तियों पर पीले धब्बे देखते हैं, तो यह रस्ट रोग हो सकता है। मैं 'फसल रोग' अनुभाग की जांच करने और उचित कवकनाशी (fungicide) के छिड़काव की सलाह देता हूँ।";
-      } else if (lowerQuery.includes('market') || lowerQuery.includes('bhav') || lowerQuery.includes('mandi')) {
-        responseText = "मंडी भाव बढ़ रहे हैं! गेहूं ₹2,150 प्रति क्विंटल पर है। अपनी फसल का कुछ हिस्सा बेचने का यह अच्छा समय है।";
-      } else if (lowerQuery.includes('irrigation') || lowerQuery.includes('pani') || lowerQuery.includes('sinchai')) {
-        responseText = "मिट्टी की नमी कम हो रही है। आज 2 घंटे के लिए ड्रिप सिंचाई चालू करें। पानी की बचत करें!";
-      } else if (lowerQuery.includes('hello') || lowerQuery.includes('namaste')) {
-        responseText = "नमस्ते! मैं आपका कृषि बिल्ली सहायक हूँ। आज मैं आपकी कैसे मदद कर सकता हूँ?";
-      } else {
-        responseText = "यह एक दिलचस्प सवाल है! मैं आपको सटीक डेटा के लिए हमारे मिट्टी विश्लेषण या उपज अनुमान टूल की जांच करने का सुझाव देता हूँ। म्याऊँ!";
-      }
-    }
-
-    setTimeout(() => {
+  const processAIResponse = async (query: string) => {
+    setIsLoading(true);
+    
+    try {
+      const responseText = await generateAIResponse(query, language);
+      
       const aiMsg: Message = {
         id: Date.now().toString(),
         text: responseText,
         sender: 'ai',
         timestamp: new Date()
       };
+      
       setMessages(prev => [...prev, aiMsg]);
       speak(responseText, language);
       setIsSpeaking(true);
+      
       // Auto-reset speaking state after a while
       setTimeout(() => setIsSpeaking(false), responseText.length * 80);
-    }, 1200);
+    } catch (error: any) {
+      console.error('AI Response Error:', error);
+      
+      const errorMsg: Message = {
+        id: Date.now().toString(),
+        text: language === 'en' 
+          ? "Meow! I'm having trouble connecting right now. Please try again in a moment. 🐾" 
+          : "म्याऊँ! मुझे अभी कनेक्ट करने में परेशानी हो रही है। कृपया एक क्षण में पुनः प्रयास करें। 🐾",
+        sender: 'ai',
+        timestamp: new Date()
+      };
+      
+      setMessages(prev => [...prev, errorMsg]);
+      toast.error(error.message || 'Failed to get AI response');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -239,7 +229,7 @@ export function AIAssistant() {
               </CardHeader>
 
               <CardContent className="flex-1 flex flex-col p-0 overflow-hidden bg-gradient-to-b from-gray-50 to-white">
-                <ScrollArea className="flex-1 p-6" ref={scrollRef}>
+                <div className="flex-1 p-6 overflow-y-auto" ref={scrollRef}>
                   <div className="space-y-6">
                     {messages.map((msg) => (
                       <motion.div
@@ -268,6 +258,26 @@ export function AIAssistant() {
                       </motion.div>
                     ))}
                     
+                    {isLoading && (
+                       <motion.div 
+                         initial={{ opacity: 0 }}
+                         animate={{ opacity: 1 }}
+                         className="flex justify-start"
+                       >
+                         <div className="flex gap-3 max-w-[85%]">
+                           <div className="shrink-0 h-8 w-8 rounded-full flex items-center justify-center text-white shadow-sm bg-green-700">
+                              <Cat className="h-4 w-4" />
+                           </div>
+                           <div className="p-4 rounded-2xl shadow-sm bg-white text-gray-800 border border-emerald-100 rounded-tl-none">
+                             <div className="flex items-center gap-2">
+                               <Loader2 className="h-4 w-4 animate-spin text-emerald-600" />
+                               <span className="text-sm text-gray-600">Cat is thinking...</span>
+                             </div>
+                           </div>
+                         </div>
+                       </motion.div>
+                    )}
+                    
                     {isSpeaking && (
                        <motion.div 
                          initial={{ opacity: 0 }}
@@ -282,7 +292,7 @@ export function AIAssistant() {
                        </motion.div>
                     )}
                   </div>
-                </ScrollArea>
+                </div>
 
                 <div className="p-4 bg-white/80 backdrop-blur-md border-t border-emerald-50">
                   <div className="flex items-center gap-3 bg-gray-50 rounded-2xl p-2 border border-emerald-50 shadow-inner">

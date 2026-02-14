@@ -1,39 +1,53 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
-import { fetchWeatherData, generateWeatherAlerts, getCropSpecificWeatherAdvice } from '../utils/weather-utils';
+import { fetchCurrentWeather, fetch5DayForecast, generateWeatherAlerts } from '../../services/weatherService';
 import { VoiceButton } from '../components/VoiceButton';
-import { Cloud, RefreshCw, AlertTriangle, Info, AlertCircle } from 'lucide-react';
+import { Cloud, RefreshCw, AlertTriangle, Info, AlertCircle, Loader2, MapPin } from 'lucide-react';
 import { Badge } from '../components/ui/badge';
 import { Alert, AlertDescription } from '../components/ui/alert';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
+import { toast } from 'sonner';
 
 export function WeatherAlerts() {
   const [weather, setWeather] = useState<any>(null);
+  const [forecast, setForecast] = useState<any[]>([]);
   const [alerts, setAlerts] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [selectedCrop, setSelectedCrop] = useState('wheat');
-  const [cropAdvice, setCropAdvice] = useState<string[]>([]);
+  const [city, setCity] = useState('Delhi');
+  const [inputCity, setInputCity] = useState('Delhi');
 
   useEffect(() => {
     loadWeather();
-  }, []);
-
-  useEffect(() => {
-    if (weather) {
-      const advice = getCropSpecificWeatherAdvice(selectedCrop, weather);
-      setCropAdvice(advice);
-    }
-  }, [selectedCrop, weather]);
+  }, [city]);
 
   const loadWeather = async () => {
     setLoading(true);
-    const data = await fetchWeatherData();
-    setWeather(data);
-    const generatedAlerts = generateWeatherAlerts(data);
-    setAlerts(generatedAlerts);
-    setLoading(false);
+    try {
+      const weatherData = await fetchCurrentWeather(city);
+      const forecastData = await fetch5DayForecast(city);
+      
+      setWeather(weatherData);
+      setForecast(forecastData);
+      
+      const generatedAlerts = generateWeatherAlerts(weatherData);
+      setAlerts(generatedAlerts);
+      
+      toast.success(`Weather loaded for ${weatherData.cityName}`);
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to fetch weather data');
+      console.error('Weather fetch error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (inputCity.trim()) {
+      setCity(inputCity.trim());
+    }
   };
 
   const getAlertIcon = (type: string) => {
@@ -67,6 +81,32 @@ export function WeatherAlerts() {
         </Button>
       </div>
 
+      {/* City Search */}
+      <Card className="border-emerald-200">
+        <CardContent className="pt-6">
+          <form onSubmit={handleSearch} className="flex gap-3">
+            <div className="flex-1">
+              <Label htmlFor="city" className="mb-2 block">Search City</Label>
+              <div className="relative">
+                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  id="city"
+                  value={inputCity}
+                  onChange={(e) => setInputCity(e.target.value)}
+                  placeholder="Enter city name (e.g., Mumbai, Pune, Delhi)"
+                  className="pl-10"
+                />
+              </div>
+            </div>
+            <div className="flex items-end">
+              <Button type="submit" disabled={loading} className="bg-emerald-600 hover:bg-emerald-700">
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Search'}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+
       {weather && (
         <>
           {/* Current Weather */}
@@ -80,36 +120,36 @@ export function WeatherAlerts() {
                 Current Conditions
               </CardTitle>
               <CardDescription className="text-blue-100">
-                Updated just now • {weather.current.location || 'Local Field'}
+                Updated just now • {weather.cityName || 'Local Field'}
               </CardDescription>
             </CardHeader>
             
             <CardContent className="relative z-10">
               <div className="flex flex-col md:flex-row items-center justify-between gap-8">
                 <div className="flex items-center gap-6">
-                  <div className="text-8xl drop-shadow-md filter">{weather.current.icon}</div>
+                  <img src={weather.icon} alt={weather.description} className="w-32 h-32 drop-shadow-md" />
                   <div>
-                    <div className="text-6xl font-bold tracking-tighter">{weather.current.temperature}°</div>
-                    <div className="text-xl font-medium opacity-90">{weather.current.condition}</div>
+                    <div className="text-6xl font-bold tracking-tighter">{weather.temp}°</div>
+                    <div className="text-xl font-medium opacity-90 capitalize">{weather.description}</div>
                   </div>
                 </div>
                 
                 <div className="grid grid-cols-2 gap-4 w-full md:w-auto">
                   <div className="bg-white/20 backdrop-blur-sm p-3 rounded-xl border border-white/30">
                     <p className="text-blue-100 text-sm mb-1">Humidity</p>
-                    <p className="text-2xl font-bold">{weather.current.humidity}%</p>
+                    <p className="text-2xl font-bold">{weather.humidity}%</p>
                   </div>
                   <div className="bg-white/20 backdrop-blur-sm p-3 rounded-xl border border-white/30">
                     <p className="text-blue-100 text-sm mb-1">Wind Speed</p>
-                    <p className="text-2xl font-bold">{weather.current.windSpeed} km/h</p>
+                    <p className="text-2xl font-bold">{weather.windSpeed} km/h</p>
                   </div>
                   <div className="bg-white/20 backdrop-blur-sm p-3 rounded-xl border border-white/30">
-                    <p className="text-blue-100 text-sm mb-1">Rainfall</p>
-                    <p className="text-2xl font-bold">{weather.current.rainfall} mm</p>
+                    <p className="text-blue-100 text-sm mb-1">Feels Like</p>
+                    <p className="text-2xl font-bold">{weather.feelsLike}°C</p>
                   </div>
                   <div className="bg-white/20 backdrop-blur-sm p-3 rounded-xl border border-white/30">
                     <p className="text-blue-100 text-sm mb-1">Pressure</p>
-                    <p className="text-2xl font-bold">1012 hPa</p>
+                    <p className="text-2xl font-bold">{weather.pressure} hPa</p>
                   </div>
                 </div>
               </div>
@@ -126,21 +166,24 @@ export function WeatherAlerts() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-4">
-                {weather.forecast.map((day: any, i: number) => (
-                  <div key={i} className="flex flex-col items-center p-4 rounded-xl bg-gray-50 border border-gray-100 hover:shadow-md transition-shadow">
-                    <p className="font-semibold text-gray-600 mb-2">{day.day}</p>
-                    <div className="text-4xl mb-3 transform hover:scale-110 transition-transform duration-200 cursor-default" title={day.condition}>
-                      {day.icon}
+                {forecast.map((day: any, i: number) => {
+                  const date = new Date(day.date);
+                  const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
+                  
+                  return (
+                    <div key={i} className="flex flex-col items-center p-4 rounded-xl bg-gray-50 border border-gray-100 hover:shadow-md transition-shadow">
+                      <p className="font-semibold text-gray-600 mb-2">{dayName}</p>
+                      <img src={day.icon} alt={day.description} className="w-16 h-16 mb-3" />
+                      <p className="text-xl font-bold text-gray-900">{day.temp}°</p>
+                      <p className="text-xs text-gray-500 mt-1 capitalize">{day.description}</p>
+                      {day.pop > 0 && (
+                        <Badge variant="secondary" className="mt-2 bg-blue-100 text-blue-700 hover:bg-blue-200 border-none">
+                          {day.pop}% rain
+                        </Badge>
+                      )}
                     </div>
-                    <p className="text-xl font-bold text-gray-900">{day.temp}°</p>
-                    <p className="text-xs text-gray-500 mt-1 capitalize">{day.condition}</p>
-                    {day.rainfall > 0 && (
-                      <Badge variant="secondary" className="mt-2 bg-blue-100 text-blue-700 hover:bg-blue-200 border-none">
-                        {day.rainfall}mm
-                      </Badge>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
@@ -169,41 +212,6 @@ export function WeatherAlerts() {
               </Alert>
             ))}
           </div>
-
-          {/* Crop-Specific Advice */}
-          <Card className="border-2 border-green-200">
-            <CardHeader>
-              <CardTitle>🌾 Crop-Specific Weather Advice</CardTitle>
-              <CardDescription>
-                Tailored recommendations based on weather and crop type
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label>Select Your Crop</Label>
-                <Select value={selectedCrop} onValueChange={setSelectedCrop}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="rice">Rice</SelectItem>
-                    <SelectItem value="wheat">Wheat</SelectItem>
-                    <SelectItem value="cotton">Cotton</SelectItem>
-                    <SelectItem value="tomato">Tomato</SelectItem>
-                    <SelectItem value="potato">Potato</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                {cropAdvice.map((advice, i) => (
-                  <div key={i} className="p-3 bg-green-50 rounded-lg border border-green-200">
-                    <p className="text-sm text-green-900">{advice}</p>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
 
           {/* Tips */}
           <Card className="border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50">

@@ -1,5 +1,6 @@
 import { createBrowserRouter } from "react-router";
 import { Layout } from "./components/Layout";
+import { ProtectedRoute } from "./components/ProtectedRoute";
 import { Dashboard } from "./pages/Dashboard";
 import { CropDisease } from "./pages/CropDisease";
 import { CropMonitoring } from "./pages/CropMonitoring";
@@ -12,11 +13,30 @@ import { YieldEstimation } from "./pages/YieldEstimation";
 import { MarketPrice } from "./pages/MarketPrice";
 import { GovernmentSchemes } from "./pages/GovernmentSchemes";
 import { Community } from "./pages/Community";
+import { Login } from "./pages/Login";
+import { Signup } from "./pages/Signup";
+import { VerifyEmail } from "./pages/VerifyEmail";
 
 export const router = createBrowserRouter([
   {
+    path: "/login",
+    Component: Login,
+  },
+  {
+    path: "/signup",
+    Component: Signup,
+  },
+  {
+    path: "/verify-email",
+    Component: VerifyEmail,
+  },
+  {
     path: "/",
-    Component: Layout,
+    element: (
+      <ProtectedRoute>
+        <Layout />
+      </ProtectedRoute>
+    ),
     children: [
       { index: true, Component: Dashboard },
       { path: "crop-disease", Component: CropDisease },
